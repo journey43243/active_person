@@ -1,0 +1,138 @@
+version: '3.9'
+services:
+  registration:
+    container_name: reg
+    build:
+      context: ""
+      dockerfile: Dockerfile
+    depends_on:
+      - users_db
+      - test_db
+    command: >
+      bash -c "pip install poetry
+      && poetry install
+      && poetry update
+      && poetry run start"
+    volumes:
+      - .:/app
+    restart: always
+    ports:
+      - 8000:8000
+
+  users_db:
+    container_name: users_db
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - .db:/var/lib/postgresql/data/pgdata
+    ports:
+      - 5432:5432
+    env_file:
+      - .env
+
+  users_cache:
+    image: redis:latest
+    container_name: redis_container
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASS}
+      - REDIS_USER=${REDIS_USER}
+      - REDIS_USER_PASSWORD=${REDIS_USER_PASS}
+    ports:
+      - 6379:6379
+    volumes:
+      - ./redisdata:/data
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    command: >
+      sh -c '
+        mkdir -p /usr/local/etc/redis &&
+        echo "bind 0.0.0.0" > /usr/local/etc/redis/redis.conf &&
+        echo "requirepass $REDIS_PASS" >> /usr/local/etc/redis/redis.conf &&
+        echo "appendonly yes" >> /usr/local/etc/redis/redis.conf &&
+        echo "appendfsync everysec" >> /usr/local/etc/redis/redis.conf &&
+        echo "user default on nopass ~* +@all" > /usr/local/etc/redis/users.acl &&
+        echo "user $REDIS_USER on >$REDIS_USER_PASS ~* +@all" >> /usr/local/etc/redis/users.acl &&
+        redis-server /usr/local/etc/redis/redis.conf --aclfile /usr/local/etc/redis/users.acl
+      '
+    healthcheck:
+      test: [ "CMD", "redis-cli", "-a", "$REDIS_PASS", "ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    tty: true
+    stdin_open: true
+    env_file:
+      - .env
+
+  test_db:
+    image: postgres
+    container_name: test_db
+    restart: always
+    environment:
+      POSTGRES_DB: ${TEST_DB_NAME}
+      POSTGRES_USER: ${TEST_DB_USER}
+      POSTGRES_PASSWORD: ${TEST_DB_PASS}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - .test_db:/var/lib/postgresql/data/pgdata
+    ports:
+      - 5433:5432
+    env_file:
+      - .env
+
+
+  test_users_cache:
+    image: redis
+    container_name: test_users_cache
+    environment:
+      - REDIS_PASSWORD=${TEST_REDIS_PASS}
+      - REDIS_USER=${TEST_REDIS_USER}
+      - REDIS_USER_PASSWORD=${TEST_REDIS_USER_PASS}
+    ports:
+      - 6380:6379
+    volumes:
+      - ./redisdata:/data
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    command: >
+      sh -c '
+        mkdir -p /usr/local/etc/redis &&
+        echo "bind 0.0.0.0" > /usr/local/etc/redis/redis.conf &&
+        echo "requirepass $TEST_REDIS_PASS" >> /usr/local/etc/redis/redis.conf &&
+        echo "appendonly yes" >> /usr/local/etc/redis/redis.conf &&
+        echo "appendfsync everysec" >> /usr/local/etc/redis/redis.conf &&
+        echo "user default on nopass ~* +@all" > /usr/local/etc/redis/users.acl &&
+        echo "user $REDIS_USER on >$TEST_REDIS_USER_PASS ~* +@all" >> /usr/local/etc/redis/users.acl &&
+        redis-server /usr/local/etc/redis/redis.conf --aclfile /usr/local/etc/redis/users.acl
+        '
+    healthcheck:
+      test: [ "CMD", "redis-cli", "-a", "$REDIS_PASS", "ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    tty: true
+    stdin_open: true
+    env_file:
+      - .env
+
+
+

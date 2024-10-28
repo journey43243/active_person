@@ -1,0 +1,7 @@
+server.main 2024-10-24 15:46:13,192 INFO sggd67567dfgjf was register
+server.main 2024-10-26 11:51:37,193 ERROR Something wrong. Check server logs to find error and fix that
+server.main 2024-10-28 09:49:29,484 ERROR Try to create existing user. User is string
+server.main 2024-10-28 09:50:15,264 ERROR Something wrong. Check server logs to find error and fix that
+server.main 2024-10-28 09:50:25,152 ERROR Something wrong. Check server logs to find error and fix that
+server.main 2024-10-28 10:52:12,851 INFO string was authorized
+server.main 2024-10-28 10:53:35,566 INFO string was authorized
