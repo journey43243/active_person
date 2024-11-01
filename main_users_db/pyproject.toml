@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "main-users-db"
+version = "0.1.0"
+description = "users_db_service"
+authors = ["Vitaly <lildid32@mail.ru>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.115.4"
+requests = "^2.32.3"
+pydantic = "^2.9.2"
+pytest = "^8.3.3"
+pytest-asyncio = "^0.24.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

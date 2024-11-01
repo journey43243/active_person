@@ -1,8 +1,8 @@
 import datetime
 
 import jwt
-from database.models import Mixin
-from database.core import RedisDatabase
+from main_users_db.database.models import Mixin
+from main_users_db.database.core import RedisDatabase
 import json
 
 

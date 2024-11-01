@@ -35,7 +35,7 @@ services:
     env_file:
       - .env
 
-  users_cache:
+  auth_cache:
     image: redis:latest
     container_name: redis_container
     environment:
@@ -93,7 +93,7 @@ services:
       - .env
 
 
-  test_users_cache:
+  test_auth_cache:
     image: redis
     container_name: test_users_cache
     environment:

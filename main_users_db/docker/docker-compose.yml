@@ -1,0 +1,35 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - ../.db:/var/lib/postgresql/data/pgdata
+    ports:
+      - 5432:5432
+
+  server:
+    restart: always
+    container_name: db_server
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    depends_on:
+      - db
+    command: >
+      bash -c "pip install poetry
+      && poetry install
+      && poetry update
+      && poetry run start"
+    volumes:
+      - ..:/app
+    ports:
+      - 8000:8000
+
+

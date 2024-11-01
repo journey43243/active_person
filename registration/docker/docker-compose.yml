@@ -1,0 +1,18 @@
+version: "3.9"
+
+services:
+  server:
+    container_name: regist_server
+    restart: always
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    command: >
+      bash -c "pip install poetry
+      && poetry install
+      && poetry update
+      && poetry run start"
+    volumes:
+      - .:/app
+    ports:
+      - 8002:8000
