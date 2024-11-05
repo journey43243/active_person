@@ -1,8 +1,8 @@
 import pytest
 from logger.logger import Logger
 from conftest import TestPostgresDatabase
-from main_users_db.database.users_orm import UsersOrm
-from main_users_db.database.models import PhoneNumber, UserValidationReg, UserValidationAuth
+from main_users_db.app.database.users_orm import UsersOrm
+from main_users_db.app.database.models import PhoneNumber, UserValidationReg, UserValidationAuth
 
 testdb = TestPostgresDatabase()
 logs = Logger(__name__).get_logger()

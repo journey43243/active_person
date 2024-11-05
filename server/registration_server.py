@@ -1,14 +1,12 @@
 from typing import Annotated
 
-import sqlalchemy
 from fastapi import FastAPI, APIRouter
-from pydantic_core import PydanticCustomError
 from uvicorn import run
 
 from fastapi.responses import JSONResponse
 from OAuth2.tokens import Token, jwt
-from main_users_db.database.models import UserValidationReg, UserValidationAuth
-from main_users_db.database.users_orm import UsersOrm, RedisDatabase, PostgresDatabase
+from main_users_db.app.database.models import UserValidationAuth
+from main_users_db.app.database.users_orm import UsersOrm, RedisDatabase, PostgresDatabase
 from fastapi import Request, Depends
 from logger.logger import Logger, logging
 

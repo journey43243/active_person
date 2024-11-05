@@ -26,10 +26,11 @@ services:
       bash -c "pip install poetry
       && poetry install
       && poetry update
-      && poetry run start"
+      && poetry run run-server"
     volumes:
       - ..:/app
     ports:
       - 8000:8000
+
 
 
