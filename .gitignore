@@ -1,0 +1,6 @@
+*__pycache__
+*enviroment
+virtenv
+*virt
+main_users_db/.db
+main_users_db/.test_db
