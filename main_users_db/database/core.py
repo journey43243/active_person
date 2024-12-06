@@ -4,7 +4,12 @@ from sqlalchemy import MetaData
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 #from .models import Mixin
+from redis.asyncio import Redis
 from contextlib import asynccontextmanager
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class PostgresDatabase:
@@ -21,34 +26,22 @@ class PostgresDatabase:
                                                   expire_on_commit=False)
         self.metadata = MetaData()
 
-    @asynccontextmanager
     async def get_async_session(self) -> AsyncGenerator[AsyncSession, None]:
-        yield self.session_factory()
-
-    async def get_metadata(self):
-        return self.metadata
+        yield self.session_factory
 
 
-# class RedisDatabase(Mixin):
-#
-#     def __init__(self):
-#         self.sync_client = sync_redis(
-#             host=f'{Mixin.redis_host}', port=int(self.redis_port),
-#             db=0, username=str(self.redis_user),
-#             password=str(self.redis_pass))
-#
-#         self.async_client = async_redis.Redis(
-#             host=f'{self.redis_host}', port=int(str(self.redis_port)),
-#             db=0, username=str(Mixin().redis_user),
-#             password=str(self.redis_pass))
-#
-#     @asynccontextmanager
-#     async def get_sync_client(self) -> sync_redis:
-#         yield self.sync_client
-#
-#     @asynccontextmanager
-#     async def get_async_client(self) -> AsyncGenerator[async_redis.Redis, None]:
-#         yield self.async_client
+
+class RedisDatabase:
+
+    def __init__(self):
+        self.async_client = Redis(
+            host=f'{os.environ.get("REDIS_HOST")}', port=int(os.environ.get("REDIS_PORT")),
+            db=0, username=str(os.environ.get("REDIS_USER")),
+            password=str(os.environ.get("REDIS_USER_PASSWORD")))
+
+    @asynccontextmanager
+    async def get_async_client(self) -> AsyncGenerator[Redis, None]:
+        yield self.async_client
 
 
 

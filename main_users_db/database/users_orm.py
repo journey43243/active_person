@@ -1,18 +1,19 @@
 from database.core import PostgresDatabase
-from models.users_models import RegistrationValidation, AuthenticationValidation, pwd_context
+from main.users_models import RegistrationValidation, AuthenticationValidation, pwd_context, UserGetResponse, UserUpdateRequest
 from .models import Users
-from sqlalchemy import select
+from sqlalchemy import select, func, delete, bindparam
 from sqlalchemy.exc import IntegrityError
+from fastapi import HTTPException
+import asyncio
 
-pgdb = PostgresDatabase()
 
-
-class UsersOrm:
+class UsersDDL:
 
     @staticmethod
-    async def create_user(user: RegistrationValidation, db):
-        #try:
-            async with db.get_async_session() as session:
+    async def create_user(user: RegistrationValidation, session_depend) -> Users:
+        try:
+            async with session_depend() as session:
+
                 us = Users(
                     username=user.username,
                     age=user.age,
@@ -22,48 +23,65 @@ class UsersOrm:
                 )
                 session.add(us)
                 await session.commit()
-                await session.close()
-        #except IntegrityError:
+                return us
+
+        except IntegrityError as error:
+            await session.rollback()
+
+            if 'email' in error._message():
+                raise HTTPException(status_code=422, detail=f'User with {user.email} already exists')
+
+            if 'number' in error._message():
+                raise HTTPException(status_code=422, detail=f'User with {user.number} already exists')
+
+            if 'username' in error._message():
+                raise HTTPException(status_code=422, detail=f'User with {user.username} already exists')
+
+        finally:
+            await session.close()
 
 
     @staticmethod
-    async def get_user(name: str, db):
-        try:
-            stmt = select(Users).filter(Users.username == name)
-            async with db.get_async_session() as session:
-                user = await session.execute(stmt)
+    async def get_user(name: str, session_depend) -> Users:
+        async with session_depend() as session:
+
+            select_by_username_exists_stmt = select(func.count()).select_from(Users).filter(Users.username == name)
+            select_by_email_exists_stmt = select(func.count()).select_from(Users).filter(Users.email == name)
+
+            first_stmt_result = await session.execute(select_by_username_exists_stmt)
+            second_stmt_result = await session.execute(select_by_email_exists_stmt)
+
+            if first_stmt_result.scalar_one():
+                get_user_stmt = select(Users).filter(Users.username == name)
+                user = await session.execute(get_user_stmt)
+
+            elif second_stmt_result.scalar_one():
+                get_user_stmt = select(Users).filter(Users.email == name)
+                user = await session.execute(get_user_stmt)
+
+            else:
                 await session.close()
-                return user.first()[0]
-        except TypeError:
-            try:
-                stmt = select(Users).filter(Users.email == name)
-                async with db.get_async_session() as session:
-                    user = await session.execute(stmt)
-                    await session.close()
-                    return user.first()[0]
-            except TypeError:
-                return False
+                raise HTTPException(status_code=404, detail="User not found")
+
+            await session.close()
+            return user.scalar_one()
 
     @staticmethod
-    async def authenticate_user(plain_user: AuthenticationValidation, db):
-        login = plain_user.login
-        password = plain_user.password
-        async with db.get_async_session() as session:
-            username_stmt = await session.execute(select(Users).where(Users.username == login))
-            email_stmt = await session.execute(select(Users).where(Users.email == login))
-            try:
-                user = username_stmt.first()[0]
-                return pwd_context.verify(password, user.hashed_password), user.username
-            except TypeError:
-                pass
-            finally:
-                await session.close()
-            try:
-                user = email_stmt.first()[0]
-                return pwd_context.verify(password, user.hashed_password), user.username
-            except TypeError:
-                pass
-            finally:
-                await session.close()
-            return False
+    async def update_user(username: str, data, session_depend):
+        user = await UsersDDL.get_user(username, session_depend)
+        async with session_depend() as session:
+            for attr, value in data.items():
+                if value and attr != 'is_superuser':
+                    setattr(user, attr, value)
+                    print('here')
+            session.add(user)
+            await session.commit()
+            await session.close()
 
+    @staticmethod
+    async def delete_user(login, session_depend):
+        async with session_depend() as session:
+            delete_stmt = delete(Users).where(Users.username == login, Users.email == login)
+            await session.execute(delete_stmt)
+            await session.commit()
+            await session.close()
