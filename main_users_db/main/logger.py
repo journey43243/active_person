@@ -1,10 +1,10 @@
 import logging
-import os
+from patterns import Singleton
 
 loggers = {}
 
 
-class Logger:
+class Logger(metaclass=Singleton):
 
     def __init__(self, name):
         self.name = name

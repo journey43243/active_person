@@ -4,10 +4,9 @@ import jwt
 from database.core import RedisDatabase
 import json
 from fastapi import HTTPException
-from typing import Union
 
 
-class Token:
+class Token(metaclass=Singleton):
 
     def __init__(self, cache=RedisDatabase()):
         self.iss = "active_person_OAuth2"
@@ -39,9 +38,11 @@ class Token:
         self.refresh_token = refresh_token
         return self.refresh_token
 
-    async def save_tokens(self):
+    async def save_tokens(self, sub):
         async with self.cache.get_async_client() as client:
-            await client.set(self.sub, json.dumps([self.access_token, self.refresh_token]))
+            await client.set(sub, json.dumps([self.access_token, self.refresh_token]))
+            cache = await client.get(sub)
+            print(cache, sub)
 
     async def check_cache(self, sub):
         async with self.cache.get_async_client() as client:
