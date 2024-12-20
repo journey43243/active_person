@@ -7,7 +7,13 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from database.models import Base
 from database.config import settings
 from alembic import context
+import alembic_postgresql_enum
 
+alembic_postgresql_enum.set_configuration(
+    alembic_postgresql_enum.Config(
+        add_type_ignore=True,
+    )
+)
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config

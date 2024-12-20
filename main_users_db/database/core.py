@@ -3,16 +3,16 @@ from .config import settings
 from sqlalchemy import MetaData
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-#from .models import Mixin
 from redis.asyncio import Redis
 from contextlib import asynccontextmanager
 import os
 from dotenv import load_dotenv
+from main.patterns import Singleton
 
 load_dotenv()
 
 
-class PostgresDatabase:
+class PostgresDatabase(metaclass=Singleton):
 
     def __init__(self):
         self.engine = create_async_engine(
@@ -30,8 +30,7 @@ class PostgresDatabase:
         yield self.session_factory
 
 
-
-class RedisDatabase:
+class RedisDatabase(metaclass=Singleton):
 
     def __init__(self):
         self.async_client = Redis(
@@ -39,7 +38,6 @@ class RedisDatabase:
             db=0, username=str(os.environ.get("REDIS_USER")),
             password=str(os.environ.get("REDIS_USER_PASSWORD")))
 
-    @asynccontextmanager
     async def get_async_client(self) -> AsyncGenerator[Redis, None]:
         yield self.async_client
 

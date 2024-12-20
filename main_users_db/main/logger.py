@@ -1,5 +1,5 @@
 import logging
-from patterns import Singleton
+from .patterns import Singleton
 
 loggers = {}
 

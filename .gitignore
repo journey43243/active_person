@@ -3,7 +3,10 @@
 /.idea
 /main_users_db/.db
 /main_users_db/.pytest_cache
-/main_users_db/.test_db
+ main_users_db/.test-db
 /main_users_db/test-db
 /main_users_db/virt
 /main_users_db/logs
+/main_users_db/__cache__
+/main_users_db/.env
+/main_users_db/redisdata/

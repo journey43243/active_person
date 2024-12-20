@@ -3,16 +3,15 @@ import os
 import jwt
 from database.core import RedisDatabase
 import json
-from fastapi import HTTPException
+from .custom_exceptions import NotAuthorized
+from .patterns import Singleton
+import asyncio
 
 
 class Token(metaclass=Singleton):
 
-    def __init__(self, cache=RedisDatabase()):
+    def __init__(self):
         self.iss = "active_person_OAuth2"
-        self.access_token = None
-        self.refresh_token = None
-        self.cache = cache
         self.exp_time_access = int(os.environ.get("EXPIRE_TIME_ACCESS"))
         self.exp_time_refresh = int(os.environ.get("EXPIRE_TIME_REFRESH"))
         self.algorithm = os.environ.get("ALGORITHM")
@@ -25,8 +24,7 @@ class Token(metaclass=Singleton):
                       "iss": self.iss,
                       "token_type": token_type}
         access_token = jwt.encode(token_data, self.secret_key, self.algorithm)
-        self.access_token = access_token
-        return self.access_token
+        return access_token
 
     async def create_refresh_token(self, sub):
         token_type = "refresh"
@@ -35,36 +33,46 @@ class Token(metaclass=Singleton):
                       "iss": self.iss,
                       "token_type": token_type}
         refresh_token = jwt.encode(token_data, self.secret_key, self.algorithm)
-        self.refresh_token = refresh_token
-        return self.refresh_token
+        return refresh_token
 
-    async def save_tokens(self, sub):
-        async with self.cache.get_async_client() as client:
-            await client.set(sub, json.dumps([self.access_token, self.refresh_token]))
-            cache = await client.get(sub)
-            print(cache, sub)
+    @staticmethod
+    async def save_tokens(sub, client, *, access_token, refresh_token):
+        await client.set(sub, json.dumps([access_token, refresh_token]))
 
-    async def check_cache(self, sub):
-        async with self.cache.get_async_client() as client:
-            tokens_couple = await client.get(sub)
-            return tokens_couple
+    @staticmethod
+    async def check_cache(sub, client):
+        tokens_couple = await client.get(sub)
+        return tokens_couple
 
-    async def verify_token(self, *, access_token, refresh_token) -> str:
+    async def verify_access_token(self, access_token, client):
         try:
             decoded_token = jwt.decode(access_token, self.secret_key, self.algorithm)
-            sub = await self.check_cache(decoded_token["sub"])
+            sub = await self.check_cache(decoded_token["sub"], client)
             if sub:
                 return decoded_token["sub"]
             else:
-                raise HTTPException(status_code=401, detail="Invalid token")
-        except jwt.exceptions.ExpiredSignatureError:
-            pass
+                return False
+        except (jwt.exceptions.InvalidSignatureError, jwt.exceptions.DecodeError):
+            return False
+
+    async def verify_refresh_token(self, refresh_token, client):
         try:
             decoded_token = jwt.decode(refresh_token, self.secret_key, self.algorithm)
-            sub = await self.check_cache(decoded_token["sub"])
+            sub = await self.check_cache(decoded_token["sub"], client)
             if sub:
                 return decoded_token["sub"]
             else:
-                raise HTTPException(status_code=401, detail="Invalid token")
+                return False
         except (jwt.exceptions.InvalidSignatureError, jwt.exceptions.DecodeError):
-            raise HTTPException(status_code=401, detail="Invalid token")
+            return False
+
+    async def verify_token(self, client, *, access_token, refresh_token) -> str:
+        verify_results = await asyncio.gather(
+            self.verify_access_token(access_token, client),
+            self.verify_refresh_token(refresh_token, client)
+        )
+        sub = [i for i in verify_results if i]
+        if sub:
+            return sub[0]
+        else:
+            raise NotAuthorized(status_code=401, detail="Not authorized")

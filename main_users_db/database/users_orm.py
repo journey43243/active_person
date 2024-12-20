@@ -9,8 +9,8 @@ import asyncio
 
 class UsersDDL:
 
-    @staticmethod
-    async def create_user(user: RegistrationValidation, session_depend) -> Users:
+    @classmethod
+    async def create_user(cls, user: RegistrationValidation, session_depend) -> Users:
         try:
             async with session_depend() as session:
 
@@ -40,9 +40,8 @@ class UsersDDL:
         finally:
             await session.close()
 
-
-    @staticmethod
-    async def get_user(name: str, session_depend) -> Users:
+    @classmethod
+    async def get_user(cls, name: str, session_depend) -> Users:
         async with session_depend() as session:
 
             select_by_username_exists_stmt = select(func.count()).select_from(Users).filter(Users.username == name)
@@ -66,8 +65,8 @@ class UsersDDL:
             await session.close()
             return user.scalar_one()
 
-    @staticmethod
-    async def update_user(username: str, data, session_depend):
+    @classmethod
+    async def update_user(cls, username: str, data, session_depend):
         user = await UsersDDL.get_user(username, session_depend)
         async with session_depend() as session:
             for attr, value in data.items():
@@ -78,8 +77,8 @@ class UsersDDL:
             await session.commit()
             await session.close()
 
-    @staticmethod
-    async def delete_user(login, session_depend):
+    @classmethod
+    async def delete_user(cls, login, session_depend):
         async with session_depend() as session:
             delete_stmt = delete(Users).where(Users.username == login, Users.email == login)
             await session.execute(delete_stmt)

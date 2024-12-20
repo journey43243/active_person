@@ -37,6 +37,8 @@ fastapi-utils = "^0.8.0"
 typing-inspect = "^0.9.0"
 python-dotenv = "^1.0.1"
 pyjwt = "^2.10.1"
+httpx = "^0.28.1"
+alembic-postgresql-enum = "^1.4.0"
 
 
 [build-system]
