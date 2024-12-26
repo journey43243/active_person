@@ -2,15 +2,14 @@ from fastapi import FastAPI, APIRouter, Depends, Request
 from uvicorn import run
 from database.users_orm import UsersDDL, RegistrationValidation, AuthenticationValidation, pwd_context, UserGetResponse, \
     UserUpdateRequest
-from database.core import PostgresDatabase
+from database.core import PostgresDatabase, RedisDatabase
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi_utils.cbv import cbv
 from .logger import Logger, logging
 from .tokens import Token, NotAuthorized
+from .patterns import Dependencies
 import asyncio
 from typing import AsyncGenerator, Union
-
-from database.core import RedisDatabase
 from database.models import Users
 
 
@@ -20,50 +19,12 @@ pgdb = PostgresDatabase()
 redis_db = RedisDatabase()
 
 
-class Dependencies:
-
-    def __init__(self, tokenclass):
-        self.token = tokenclass
-
-    async def authentication(self, request: Request):
-        try:
-            access_token, refresh_token = request.cookies["access_token"], request.cookies["refresh_token"]
-            username = await self.token.verify_token(access_token=access_token,
-                                                     refresh_token=refresh_token)
-            return username
-        except KeyError:
-            authentication_url = sorted(router.routes, key=lambda x: x.name == "AuthenticationAPI")[0]
-            return RedirectResponse(authentication_url)
-
-    @staticmethod
-    async def create_user_get_response(user: Users):
-        response_data = UserGetResponse(
-            username=user.username,
-            email=user.email,
-            number=user.number,
-            age=user.age,
-            is_active=user.is_active,
-            is_superuser=user.is_superuser
-        )
-        return response_data
-
-    async def create_and_save_tokens(self, username, client):
-        access_token, refresh_token = await asyncio.gather(
-            self.token.create_access_token(username),
-            self.token.create_refresh_token(username)
-        )
-        await self.token.save_tokens(username, client,
-                                     access_token=access_token,
-                                     refresh_token=refresh_token)
-        return access_token, refresh_token
-
 @cbv(router)
 class UsersCBV:
-
     session: AsyncGenerator = Depends(pgdb.get_async_session)
     logs: logging.getLogger = Depends(Logger(__name__).get_logger)
     token = Token()
-    dependencies = Dependencies(token)
+    dependencies = Dependencies(token, "/users/authentication/")
     redis_cache: RedisDatabase = Depends(redis_db.get_async_client)
 
     @router.post('/users/registration/', name="RegistrationAPI")
@@ -105,13 +66,13 @@ class UsersCBV:
     async def authentication(self, request_user: AuthenticationValidation) -> JSONResponse:
         db_user = await UsersDDL.get_user(request_user.login, self.session)
         if pwd_context.verify(request_user.password, db_user.hashed_password):
-            access_token, refresh_token = await create_and_save_tokens(db_user.username, self.redis_cache)
+            access_token, refresh_token = await self.dependencies.create_and_save_tokens(db_user.username, self.redis_cache)
             response = JSONResponse({"msg": "authorized"})
             response.set_cookie("access_token", access_token, httponly=True, secure=True)
             response.set_cookie("refresh_token", refresh_token, httponly=True, secure=True)
             return response
         else:
-            raise NotAuthorized
+            raise NotAuthorized(status_code=401)
 
     @router.get("/users/current_user/")
     async def current_user(self, username: Dependencies = Depends(dependencies.authentication)):
@@ -122,7 +83,7 @@ class UsersCBV:
         try:
             access_token, refresh_token = request.cookies["access_token"], request.cookies["refresh_token"]
         except KeyError:
-            raise NotAuthorized(status_code=401, detail="Not authorized")
+            raise NotAuthorized(status_code=401)
 
         sub = await self.token.verify_token(self.redis_cache,
                                             access_token=access_token,
@@ -151,8 +112,7 @@ class UsersCBV:
 
     @app.exception_handler(NotAuthorized)
     async def not_authorized_handler(self, request: Request):
-        return JSONResponse({"detail": "Not authorized"})
-
+        return JSONResponse({"detail": "Not authorized"}, status_code=401)
 
 
 app.include_router(router)

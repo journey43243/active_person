@@ -101,7 +101,7 @@ async def prepare_database():
 
 
 @pytest.fixture(scope="session")
-async def get_async_client():
+async def async_client():
     async with AsyncClient(transport=ASGITransport(app=app),
                            base_url="http://test") as ac:
         yield ac

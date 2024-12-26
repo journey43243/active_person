@@ -1,7 +1,6 @@
 import datetime
 import os
 import jwt
-from database.core import RedisDatabase
 import json
 from .custom_exceptions import NotAuthorized
 from .patterns import Singleton

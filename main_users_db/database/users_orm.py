@@ -72,7 +72,6 @@ class UsersDDL:
             for attr, value in data.items():
                 if value and attr != 'is_superuser':
                     setattr(user, attr, value)
-                    print('here')
             session.add(user)
             await session.commit()
             await session.close()
