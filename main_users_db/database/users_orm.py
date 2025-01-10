@@ -1,16 +1,13 @@
-from database.core import PostgresDatabase
-from main.users_models import RegistrationValidation, AuthenticationValidation, pwd_context, UserGetResponse, UserUpdateRequest
 from .models import Users
 from sqlalchemy import select, func, delete, bindparam
 from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException
-import asyncio
 
 
 class UsersDDL:
 
     @classmethod
-    async def create_user(cls, user: RegistrationValidation, session_depend) -> Users:
+    async def create_user(cls, user, session_depend) -> Users:
         try:
             async with session_depend() as session:
 

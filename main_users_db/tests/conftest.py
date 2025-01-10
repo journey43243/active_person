@@ -1,22 +1,23 @@
+import json
+
 import pytest
 from typing import AsyncGenerator
 from sqlalchemy import MetaData
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from redis.asyncio import Redis
-from contextlib import asynccontextmanager
 import os
 from dotenv import load_dotenv
 import asyncio
+from redis import Redis as syncRedis
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from database.models import Base
 from main.server import app
-from database.core import PostgresDatabase, RedisDatabase
+from database.core import PostgresDatabase, RedisDatabase, RedisDatabase, RedisDatabaseEnum
 from httpx import ASGITransport, AsyncClient
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.pool import NullPool
-from pydantic_extra_types.phone_numbers import PhoneNumber
+
 
 load_dotenv()
 
@@ -69,11 +70,10 @@ class TestRedisDatabase:
 
 
 db = PostgresDatabase()
-cache = RedisDatabase()
+cache = RedisDatabase(RedisDatabaseEnum.token_base.value)
 
 testdb = TestPostgresDatabase()
 testcache = TestRedisDatabase()
-
 Base.metadata.bind = testdb.engine
 
 app.dependency_overrides[db.get_async_session] = testdb.get_async_session
@@ -99,10 +99,10 @@ async def prepare_database():
         await conn.run_sync(sa.Enum('is_superuser', 'not_superuser', name='superuser_status_enum').drop)
         await conn.run_sync(sa.Enum('active', 'unactive', name='active_status_enum').drop)
 
-
 @pytest.fixture(scope="session")
 async def async_client():
     async with AsyncClient(transport=ASGITransport(app=app),
                            base_url="http://test") as ac:
         yield ac
+
 

@@ -1,31 +1,23 @@
 import asyncio
+from typing import NoReturn
+
 from fastapi import Request
 from database.models import Users
-from fastapi.responses import RedirectResponse, JSONResponse
-from .custom_exceptions import NotAuthorized
-from .users_models import UserGetResponse
-
-class Singleton(type):
-
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-        return cls._instances[cls]
-
+from ..custom_exceptions import NotAuthorized
+from ..users_models import UserGetResponse
 
 class Dependencies:
 
-    def __init__(self, tokenclass, authentication_url):
+    def __init__(self, tokenclass, authentication_url: str, client) -> NoReturn:
         self.token = tokenclass
         self.authentication_url = authentication_url
+        self.client = client
 
-    async def authentication(self, request: Request):
+    async def authentication(self, request: Request) -> str:
         try:
-            access_token, refresh_token = request.cookies["access_token"], request.cookies["refresh_token"]
-            username = await self.token.verify_token(access_token=access_token,
-                                                     refresh_token=refresh_token)
+            access_token= request.cookies["access_token"]
+            username = await self.token.verify_access_token(access_token=access_token,
+                                                            client=self.client)
             return username
         except KeyError:
             raise NotAuthorized(status_code=401)
@@ -42,12 +34,12 @@ class Dependencies:
         )
         return response_data
 
-    async def create_and_save_tokens(self, username, client):
+    async def create_and_save_tokens(self, username: str) -> tuple:
         access_token, refresh_token = await asyncio.gather(
             self.token.create_access_token(username),
             self.token.create_refresh_token(username)
         )
-        await self.token.save_tokens(username, client,
+        await self.token.save_tokens(sub=username, client=self.client,
                                      access_token=access_token,
                                      refresh_token=refresh_token)
         return access_token, refresh_token

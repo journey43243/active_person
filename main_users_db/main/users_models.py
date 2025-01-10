@@ -2,8 +2,9 @@ from pydantic import BaseModel, EmailStr, field_validator
 from pydantic_extra_types.phone_numbers import PhoneNumber
 from typing import Optional
 from passlib.context import CryptContext
-from fastapi.responses import JSONResponse
 import string
+import asyncio
+
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -56,13 +57,11 @@ class RegistrationValidation(BaseModel):
 
 
 class AuthenticationValidation(BaseModel):
-
     login: str
     password: str
 
 
 class UserGetResponse(BaseModel):
-
     username: str
     email: EmailStr
     number: PhoneNumber
@@ -72,7 +71,6 @@ class UserGetResponse(BaseModel):
 
 
 class UserUpdateRequest(BaseModel):
-
     username: Optional[str] = None
     password: Optional[str] = None
     number: Optional[PhoneNumber] = None

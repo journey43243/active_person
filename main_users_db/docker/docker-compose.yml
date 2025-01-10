@@ -68,13 +68,13 @@ services:
     image: redis:latest
     container_name: test_redis_container
     environment:
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
-      - REDIS_USER=${REDIS_USER}
-      - REDIS_USER_PASSWORD=${REDIS_USER_PASSWORD}
+      - REDIS_PASSWORD=${TEST_REDIS_PASSWORD}
+      - REDIS_USER=${TEST_REDIS_USER}
+      - REDIS_USER_PASSWORD=${TEST_REDIS_USER_PASSWORD}
     ports:
       - "6381:6379"
     volumes:
-      - ../redisdata:/data
+      - ../test-redisdata:/data
     deploy:
       resources:
         limits:
@@ -87,15 +87,15 @@ services:
       sh -c '
         mkdir -p /usr/local/etc/redis &&
         echo "bind 0.0.0.0" > /usr/local/etc/redis/redis.conf &&
-        echo "requirepass $REDIS_PASSWORD" >> /usr/local/etc/redis/redis.conf &&
+        echo "requirepass $TEST_REDIS_PASSWORD" >> /usr/local/etc/redis/redis.conf &&
         echo "appendonly yes" >> /usr/local/etc/redis/redis.conf &&
         echo "appendfsync everysec" >> /usr/local/etc/redis/redis.conf &&
         echo "user default on nopass ~* +@all" > /usr/local/etc/redis/users.acl &&
-        echo "user $REDIS_USER on >$REDIS_USER_PASSWORD ~* +@all" >> /usr/local/etc/redis/users.acl &&
+        echo "user $TEST_REDIS_USER on >$TEST_REDIS_USER_PASSWORD ~* +@all" >> /usr/local/etc/redis/users.acl &&
         redis-server /usr/local/etc/redis/redis.conf --aclfile /usr/local/etc/redis/users.acl
       '
     healthcheck:
-      test: [ "CMD", "redis-cli", "-a", "$REDIS_PASSWORD", "ping" ]
+      test: [ "CMD", "redis-cli", "-a", "$TEST_REDIS_PASSWORD", "ping" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -119,6 +119,18 @@ services:
       - ..:/app
     ports:
       - 8000:8000
+  rabittmq:
+    image: rabbitmq:latest
+    restart: always
+    hostname: rabittmq
+    ports:
+      - 15672:15672
+      - 5672:5672
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
+    volumes:
+      - ../.rabbitmq:/var/lib/rabbitmq
 
 
 
